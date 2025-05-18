@@ -1,10 +1,16 @@
 pipeline {
     agent any
 
+    environment {
+        GIT_CREDENTIALS_ID = 'github-creds' 
+    }
+
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/Mrunmayii/Intrusion-Detection-System-MLOps.git'
+                git url: 'https://github.com/Mrunmayii/Intrusion-Detection-System-MLOps.git',
+                credentialsId: 'github-pat',
+                branch: 'main'
             }
         }
 
