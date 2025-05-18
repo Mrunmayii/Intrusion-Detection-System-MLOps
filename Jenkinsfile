@@ -4,14 +4,13 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/your-username/intrusion-detector.git'
+                git 'https://github.com/Mrunmayii/Intrusion-Detection-System-MLOps.git'
             }
         }
 
-        stage('Checkout') {
+        stage('Train model') {
             steps {
                 sh 'python3 model.py' 
-                // will generate model.joblib file
             }
         }
 
