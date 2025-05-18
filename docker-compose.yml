@@ -1,0 +1,45 @@
+services:
+  ml-service:
+    build: ./ml-service
+    image: ml-service
+    container_name: model
+    ports:
+      - "5003:5003"
+
+  preprocessing-service:
+    build: ./preprocessing-service
+    image: preprocessing-service
+    container_name: preprocessing
+    ports:
+      - "5002:5002"
+    depends_on:
+      - ml-service
+
+  packet-capture-service:
+    build: ./packet-capture-service
+    image: capture-service
+    container_name: capture
+    ports:
+      - "5001:5001"
+    cap_add:
+      - NET_ADMIN
+    depends_on:
+      - preprocessing-service
+  
+  frontend-service:
+    build: ./frontend-service
+    image: frontend-service
+    container_name: frontend
+    ports:
+      - "5000:5000"
+    depends_on:
+      - ml-service
+
+  simulator-service:
+    build: ./simulator
+    image: simulator-service
+    container_name: simulator
+    ports:
+      - "5004:5004"
+    depends_on:
+      - packet-capture-service
