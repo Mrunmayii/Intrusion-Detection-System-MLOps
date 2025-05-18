@@ -9,7 +9,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git url: 'https://github.com/Mrunmayii/Intrusion-Detection-System-MLOps.git',
-                credentialsId: 'github-pat',
+                credentialsId: 'GIT_CREDENTIALS_ID',
                 branch: 'main'
             }
         }
