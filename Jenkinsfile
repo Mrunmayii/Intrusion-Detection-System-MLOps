@@ -10,6 +10,7 @@ pipeline {
         CAPTURE_IMAGE = "${REGISTRY}/capture-service:latest"
         FRONTEND_IMAGE = "${REGISTRY}/frontend-service:latest"
         SIMULATOR_IMAGE = "${REGISTRY}/simulator-service:latest"
+        KUBECONFIG = "/var/lib/jenkins/.kube/config"
     }
 
     stages {
@@ -57,17 +58,31 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Cleanup Docker Images') {
             steps {
                 script {
-                    sh '''
-                    sed -i "s|image: ml-service|image: ${ML_IMAGE}|g" kubernetes/ml-deployment.yaml
-                    sed -i "s|image: preprocessing-service|image: ${PREPROCESS_IMAGE}|g" kubernetes/preprocessing-deployment.yaml
-                    sed -i "s|image: capture-service|image: ${CAPTURE_IMAGE}|g" kubernetes/capture-deployment.yaml
-                    sed -i "s|image: frontend-service|image: ${FRONTEND_IMAGE}|g" kubernetes/frontend-deployment.yaml
-                    sed -i "s|image: simulator-service|image: ${SIMULATOR_IMAGE}|g" kubernetes/simulator-deployment.yaml
-                    '''
-                    sh 'kubectl apply -f kubernetes/'
+                    sh 'docker image prune -f'
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                withEnv(["KUBECONFIG=${env.KUBECONFIG}"]) {
+                    script {
+                        sh '''
+                            sed -i "s|image: ml-service|image: ${ML_IMAGE}|g" kubernetes/ml-deployment.yaml
+                            sed -i "s|image: preprocessing-service|image: ${PREPROCESS_IMAGE}|g" kubernetes/preprocessing-deployment.yaml
+                            sed -i "s|image: capture-service|image: ${CAPTURE_IMAGE}|g" kubernetes/capture-deployment.yaml
+                            sed -i "s|image: frontend-service|image: ${FRONTEND_IMAGE}|g" kubernetes/frontend-deployment.yaml
+                            sed -i "s|image: simulator-service|image: ${SIMULATOR_IMAGE}|g" kubernetes/simulator-deployment.yaml
+                        '''
+                        sh '''
+                            kubectl config current-context
+                            kubectl get nodes
+                            kubectl apply -f kubernetes/
+                        '''
+                    }
                 }
             }
         }
