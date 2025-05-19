@@ -3,6 +3,13 @@ pipeline {
 
     environment {
         GIT_CREDENTIALS_ID = 'github-creds' 
+        DOCKER_CREDENTIALS = 'docker-cred'
+        REGISTRY = 'mrunmayi12'
+        ML_IMAGE = "${REGISTRY}/ml-service:latest"
+        PREPROCESS_IMAGE = "${REGISTRY}/preprocessing-service:latest"
+        CAPTURE_IMAGE = "${REGISTRY}/capture-service:latest"
+        FRONTEND_IMAGE = "${REGISTRY}/frontend-service:latest"
+        SIMULATOR_IMAGE = "${REGISTRY}/simulator-service:latest"
     }
 
     stages {
@@ -14,23 +21,64 @@ pipeline {
             }
         }
 
-        stage('Train model') {
+        stage('Build Docker Images') {
             steps {
-                sh 'python3 model.py' 
+                script {
+                    docker.build(ML_IMAGE, './ml-service')
+                    docker.build(PREPROCESS_IMAGE, './preprocessing-service')
+                    docker.build(CAPTURE_IMAGE, './packet-capture-service')
+                    docker.build(FRONTEND_IMAGE, './frontend-service')
+                    docker.build(SIMULATOR_IMAGE, './simulator')
+                }
             }
         }
 
-        stage('Build & Deploy') {
+        stage('Docker Login') {
             steps {
-                sh 'docker-compose down'
-                sh 'docker-compose up --build -d'
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS) {
+                        echo "Logged in to Docker Hub"
+                    }
+                }
+            }
+        }
+
+        stage('Push Docker Images') {
+            steps {
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS) {
+                        docker.image(ML_IMAGE).push()
+                        docker.image(PREPROCESS_IMAGE).push()
+                        docker.image(CAPTURE_IMAGE).push()
+                        docker.image(FRONTEND_IMAGE).push()
+                        docker.image(SIMULATOR_IMAGE).push()
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    sh '''
+                    sed -i "s|image: ml-service|image: ${ML_IMAGE}|g" kubernetes/ml-deployment.yaml
+                    sed -i "s|image: preprocessing-service|image: ${PREPROCESS_IMAGE}|g" kubernetes/preprocessing-deployment.yaml
+                    sed -i "s|image: capture-service|image: ${CAPTURE_IMAGE}|g" kubernetes/capture-deployment.yaml
+                    sed -i "s|image: frontend-service|image: ${FRONTEND_IMAGE}|g" kubernetes/frontend-deployment.yaml
+                    sed -i "s|image: simulator-service|image: ${SIMULATOR_IMAGE}|g" kubernetes/simulator-deployment.yaml
+                    '''
+                    sh 'kubectl apply -f kubernetes/'
+                }
             }
         }
     }
 
     post {
-        always {
-            sh 'docker-compose ps'
+        success {
+            echo "Deployment completed successfully!"
+        }
+        failure {
+            echo "Something went wrong. Check the logs."
         }
     }
 }

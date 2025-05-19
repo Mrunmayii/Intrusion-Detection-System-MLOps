@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: packet-capture-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: packet-capture-service
+  template:
+    metadata:
+      labels:
+        app: packet-capture-service
+    spec:
+      containers:
+      - name: packet-capture-service
+        image: mrunmayi12/capture-service:latest
+        securityContext:
+          capabilities:
+            add: ["NET_ADMIN"]
+        ports:
+        - containerPort: 5001

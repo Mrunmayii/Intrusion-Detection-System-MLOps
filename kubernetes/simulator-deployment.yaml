@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simulator-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: simulator-service
+  template:
+    metadata:
+      labels:
+        app: simulator-service
+    spec:
+      containers:
+      - name: simulator-service
+        image: mrunmayi12/simulator-service:latest
+        ports:
+        - containerPort: 5004

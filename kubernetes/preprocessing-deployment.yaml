@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: preprocessing-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: preprocessing-service
+  template:
+    metadata:
+      labels:
+        app: preprocessing-service
+    spec:
+      containers:
+      - name: preprocessing-service
+        image: mrunmayi12/preprocessing-service:latest
+        ports:
+        - containerPort: 5002
