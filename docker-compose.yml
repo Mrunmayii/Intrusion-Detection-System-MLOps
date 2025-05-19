@@ -1,14 +1,14 @@
 services:
   ml-service:
     build: ./ml-service
-    image: ml-service
+    image: mrunmayi12/ml-service:latest
     container_name: model
     ports:
       - "5003:5003"
 
   preprocessing-service:
     build: ./preprocessing-service
-    image: preprocessing-service
+    image: mrunmayi12/preprocessing-service:latest
     container_name: preprocessing
     ports:
       - "5002:5002"
@@ -17,7 +17,7 @@ services:
 
   packet-capture-service:
     build: ./packet-capture-service
-    image: capture-service
+    image: mrunmayi12/capture-service:latest
     container_name: capture
     ports:
       - "5001:5001"
@@ -28,7 +28,7 @@ services:
   
   frontend-service:
     build: ./frontend-service
-    image: frontend-service
+    image: mrunmayi12/frontend-service:latest
     container_name: frontend
     ports:
       - "5000:5000"
@@ -37,7 +37,7 @@ services:
 
   simulator-service:
     build: ./simulator
-    image: simulator-service
+    image: mrunmayi12/simulator-service:latest
     container_name: simulator
     ports:
       - "5004:5004"

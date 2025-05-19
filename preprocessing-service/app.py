@@ -3,10 +3,11 @@ from pydantic import BaseModel
 from typing import Optional
 import uvicorn
 import asyncio
+from prometheus_fastapi_instrumentator import Instrumentator
 
-# MODEL_URL = "http://localhost:5003/detect_batch"
 # MODEL_URL = "http://ml-service:5003/detect"
 MODEL_URL = "http://ml-service:5003/detect_batch"
+# MODEL_URL = "http://localhost:5003/detect_batch"
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -14,6 +15,7 @@ import asyncio
 import httpx
 
 app = FastAPI()
+Instrumentator().instrument(app).expose(app)
 
 batch = []
 BATCH_SIZE = 50

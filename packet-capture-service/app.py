@@ -7,8 +7,10 @@ from datetime import datetime
 import time
 import threading
 from pydantic import BaseModel
+from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI()
+Instrumentator().instrument(app).expose(app)
 
 PREPROCESSING_URL = "http://preprocessing-service:5002/extract"
 # PREPROCESSING_BATCH_URL = "http://preprocessing-service:5002/extract_batch"

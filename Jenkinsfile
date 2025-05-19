@@ -86,6 +86,31 @@ pipeline {
                 }
             }
         }
+
+        // stage('Deploy ELK Stack') {
+        //     steps {
+        //         withEnv(["KUBECONFIG=${env.KUBECONFIG}"]) {
+        //             script {
+        //                 sh '''
+        //                 kubectl apply -f kubernetes/elk/
+        //                 '''
+        //             }
+        //         }
+        //     }
+        // }
+
+        stage('Deploy Prometheus and Grafana') {
+            steps {
+                withEnv(["KUBECONFIG=${env.KUBECONFIG}"]) {
+                    script {
+                        sh '''
+                        kubectl apply -f kubernetes/monitoring/
+                        '''
+                    }
+                }
+            }
+        }
+
     }
 
     post {

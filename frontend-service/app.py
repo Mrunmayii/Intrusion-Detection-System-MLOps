@@ -2,6 +2,9 @@ import streamlit as st
 import requests
 import time
 import threading
+from metrics import packet_counter, start_metrics_server
+
+start_metrics_server()
 
 BASE_URL = "http://packet-capture-service:5001/"
 PREPROCESSING_URL = "http://preprocessing-service:5002/"
@@ -103,11 +106,12 @@ if option == "Live Capture":
             except Exception as e:
                 st.error(f"Failed to stop capture: {e}")
 
-    with st.expander("Recent Captured Packets (Live View)", expanded=True):
-        if st.session_state["live_packet_log"]:
-            st.dataframe(st.session_state["live_packet_log"], use_container_width=True)
-        else:
-            st.info("No packets captured yet.")
+    # with st.expander("Recent Captured Packets (Live View)", expanded=True):
+    #     if st.session_state["live_packet_log"]:
+    #         # st.rerun()
+    #         st.dataframe(st.session_state["live_packet_log"], use_container_width=True)
+    #     else:
+    #         st.info("No packets captured yet.")
 
     with st.expander("Check Detected Malicious Packets"):
         if st.button("Check for Malicious Packets"):
@@ -143,7 +147,7 @@ elif option == "Simulate Packets":
         if st.button(f"Simulate {n_packets} Packets"):
             try:
                 requests.post(f"{PREPROCESSING_URL}clear_results")
-                packets = requests.post(f"{SIMULATE_URL}simulate_packet", json={"n": n_packets}).json()
+                packets = requests.post(f"{SIMULATE_URL}simulate_packets", json={"n": n_packets}).json()
                 for pkt in packets:
                     requests.post(f"{PREPROCESSING_URL}extract", json=pkt)
 

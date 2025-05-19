@@ -1,2 +1,3 @@
 streamlit
 requests
+prometheus_client

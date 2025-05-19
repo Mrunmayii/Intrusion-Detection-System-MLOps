@@ -3,3 +3,4 @@ pyshark
 requests
 uvicorn
 pydantic
+prometheus-fastapi-instrumentator
