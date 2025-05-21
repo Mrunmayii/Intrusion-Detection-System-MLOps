@@ -7,14 +7,14 @@ from datetime import datetime
 import time
 import threading
 from pydantic import BaseModel
-from prometheus_fastapi_instrumentator import Instrumentator
+# from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI()
-Instrumentator().instrument(app).expose(app)
+# Instrumentator().instrument(app).expose(app)
 
-PREPROCESSING_URL = "http://preprocessing-service:5002/extract"
+# PREPROCESSING_URL = "http://preprocessing-service:5002/extract"
 # PREPROCESSING_BATCH_URL = "http://preprocessing-service:5002/extract_batch"
-# PREPROCESSING_URL = "http://localhost:5002/extract"
+PREPROCESSING_URL = "http://localhost:5002/extract"
 # PREPROCESSING_BATCH_URL = "http://localhost:5002/extract_batch"
 
 BATCH_SIZE = 10  # Number of packets per batch
@@ -83,7 +83,7 @@ def capture_packets():
     print("in packet capture")
     global capture_thread_stop
     capture_thread_stop = False
-    capture = pyshark.LiveCapture(interface="any")
+    capture = pyshark.LiveCapture(interface="wlo1")
     batch = []
     last_sent_time = time.time()
     for packet in capture.sniff_continuously():

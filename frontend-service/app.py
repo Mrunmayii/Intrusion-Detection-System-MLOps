@@ -2,19 +2,20 @@ import streamlit as st
 import requests
 import time
 import threading
-from metrics import packet_counter, start_metrics_server
+import pandas as pd
+# from metrics import packet_counter, start_metrics_server
 
-start_metrics_server()
+# start_metrics_server()
 
-BASE_URL = "http://packet-capture-service:5001/"
-PREPROCESSING_URL = "http://preprocessing-service:5002/"
-ML_SERVICE_URL = "http://ml-service:5003/"
-SIMULATE_URL = "http://simulator-service:5004/"
+# BASE_URL = "http://packet-capture-service:5001/"
+# PREPROCESSING_URL = "http://preprocessing-service:5002/"
+# ML_SERVICE_URL = "http://ml-service:5003/"
+# SIMULATE_URL = "http://simulator-service:5004/"
 
-# BASE_URL = "http://localhost:5001/"
-# PREPROCESSING_URL = "http://localhost:5002/"
-# ML_SERVICE_URL = "http://localhost:5003/detect"
-# SIMULATE_URL = "http://localhost:5004/"
+BASE_URL = "http://localhost:5001/"
+PREPROCESSING_URL = "http://localhost:5002/"
+ML_SERVICE_URL = "http://localhost:5003/detect"
+SIMULATE_URL = "http://localhost:5004/"
 
 if "live_capture_running" not in st.session_state:
     st.session_state["live_capture_running"] = False
@@ -42,6 +43,10 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+
+
+def highlight_anomalies(row):
+    return ['background-color: #FFCCCC' if row['anomaly'] else '' for _ in row]
 
 st.title("Real-time Intrusion Detection System")
 
@@ -106,12 +111,36 @@ if option == "Live Capture":
             except Exception as e:
                 st.error(f"Failed to stop capture: {e}")
 
-    # with st.expander("Recent Captured Packets (Live View)", expanded=True):
-    #     if st.session_state["live_packet_log"]:
-    #         # st.rerun()
-    #         st.dataframe(st.session_state["live_packet_log"], use_container_width=True)
-    #     else:
-    #         st.info("No packets captured yet.")
+    with st.expander("Recent Captured Packets (Live View)", expanded=True):
+        if st.session_state["live_capture_running"]:
+            try:
+                res = requests.get(f"{BASE_URL}get_packet")
+                packet = res.json()
+                detection = requests.post(f"{BASE_URL}analyze_packet", json=packet).json()
+
+                packet_display = {
+                    "src_ip": packet.get("src_ip", "N/A"),
+                    "dst_ip": packet.get("dst_ip", "N/A"),
+                    "protocol": packet.get("protocol", "N/A"),
+                    "length": packet.get("length", "N/A"),
+                    "timestamp": packet.get("timestamp", "N/A"),
+                    "Label": "Anomaly" if detection.get("anomaly", False) else "Normal",
+                    "Reasons": "; ".join(detection.get("reasons", []))
+                }
+
+                st.session_state["live_packet_log"].append(packet_display)
+                if len(st.session_state["live_packet_log"]) > 20:
+                    st.session_state["live_packet_log"] = st.session_state["live_packet_log"][-20:]
+
+            except Exception as e:
+                st.error(f"Error fetching packet: {e}")
+
+        if st.session_state["live_packet_log"]:
+            st.dataframe(st.session_state["live_packet_log"], use_container_width=True)
+            time.sleep(2)
+            st.experimental_rerun()
+        else:
+            st.info("No packets captured yet.")
 
     with st.expander("Check Detected Malicious Packets"):
         if st.button("Check for Malicious Packets"):

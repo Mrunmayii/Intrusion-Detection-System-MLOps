@@ -17,7 +17,7 @@ ANOMALIES_DETECTED = Counter("ml_anomalies_detected_total", "Total anomalies det
 class Features(BaseModel):
     src_ip: str
     dst_ip: str
-    protocol: int  # 1 = TCP, 0 = other
+    protocol: int 
     length: int
     timestamp: str
 
@@ -29,6 +29,7 @@ def detect(features: Features):
     # IsolationForest.predict returns 1 for normal, -1 for anomaly
     pred = model.predict(x)[0]
     anomaly = bool(pred == -1)
+    print(anomaly)
     if anomaly:
         ANOMALIES_DETECTED.inc()
     return {
@@ -44,7 +45,7 @@ def detect_batch(batch: List[Features]):  # Expecting a raw list of packet dicts
     print("recieved in ml service", len(batch))
     x = np.array([[pkt.protocol, pkt.length] for pkt in batch])
     preds = model.predict(x)
-    
+    print("prediction", preds)
     results = []
     for pkt, pred in zip(batch, preds):
         anomaly = bool(pred == -1)
@@ -56,6 +57,7 @@ def detect_batch(batch: List[Features]):  # Expecting a raw list of packet dicts
             "anomaly": anomaly,
             "reasons": ["Detected by Isolation Forest model"] if anomaly else ["Looks normal"]
         })
+        print("is anomaly", anomaly)
     return {"results": results}
 
 @app.get("/metrics")

@@ -3,19 +3,16 @@ from pydantic import BaseModel
 from typing import Optional
 import uvicorn
 import asyncio
-from prometheus_fastapi_instrumentator import Instrumentator
+import httpx
+# from prometheus_fastapi_instrumentator import Instrumentator
 
 # MODEL_URL = "http://ml-service:5003/detect"
-MODEL_URL = "http://ml-service:5003/detect_batch"
-# MODEL_URL = "http://localhost:5003/detect_batch"
+# MODEL_URL = "http://ml-service:5003/detect_batch"
+MODEL_URL = "http://localhost:5003/detect_batch"
 
-from fastapi import FastAPI
-from pydantic import BaseModel
-import asyncio
-import httpx
 
 app = FastAPI()
-Instrumentator().instrument(app).expose(app)
+# Instrumentator().instrument(app).expose(app)
 
 batch = []
 BATCH_SIZE = 50
@@ -30,10 +27,16 @@ class Packet(BaseModel):
     timestamp: str
 
 def convert(packet: Packet):
+    protocol_map = {
+        "TCP": 1,
+        "UDP": 2,
+        "DNS": 3,
+        "ICMP": 4
+    }
     return {
         "src_ip": packet.src_ip,
         "dst_ip": packet.dst_ip,
-        "protocol": 1 if packet.protocol == "TCP" else 0,
+        "protocol": protocol_map.get(packet.protocol.upper(), 0),
         "length": packet.length,
         "timestamp": packet.timestamp
     }
@@ -50,6 +53,12 @@ async def extract(packet: Packet):
 
 store_results_for_frontend = []
 async def send_to_ml_model(packets):
+    reverse_protocol_map = {
+        1: "TCP",
+        2: "UDP",
+        3: "DNS",
+        4: "ICMP"
+    }
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(MODEL_URL, json=packets)
@@ -62,7 +71,7 @@ async def send_to_ml_model(packets):
                     combined.append({
                         "src_ip": pkt["src_ip"],
                         "dst_ip": pkt["dst_ip"],
-                        "protocol": "TCP" if pkt["protocol"] == 1 else "Other",
+                        "protocol": reverse_protocol_map.get(pkt["protocol"], "Other"),
                         "length": pkt["length"],
                         "timestamp": pkt["timestamp"],
                         "anomaly": res["anomaly"],
@@ -103,66 +112,6 @@ async def startup_event():
 def root():
     return {"status": "preprocessing service running"}
 
-# @app.post("/extract")
-# async def extract_features(packet: Packet):
-#     print("in preprocess")
-#     features = {
-#         "src_ip": packet.src_ip,
-#         "dst_ip": packet.dst_ip,
-#         "protocol": 1 if packet.protocol == "TCP" else 0,
-#         "length": packet.length,
-#         "timestamp": packet.timestamp,
-#     }
-#     # print("Extracted features:", features)
-#     # return {"status": "received", "features": features}
-#     try:
-#         response = requests.post(MODEL_URL, json=features)
-#         model_response = response.json()
-#         return {
-#             "features": features,
-#             "anomaly": model_response.get("anomaly"),
-#             "reasons": model_response.get("reasons", [])
-#         }
-#     except Exception as e:
-#         print("Error contacting anomaly-detector:", e)
-#         return {
-#             "features": features,
-#             "error": str(e),
-#             "anomaly": False,
-#             "reasons": ["ML model failed"]
-#         }
-#     return {"status": "received", "features": features}
-
-# @app.post("/extract_batch")
-# async def extract_batch(data: dict):
-#     print("in preprocess")
-#     packets = data.get("packets", [])
-#     results = []
-
-#     for pkt in packets:
-#         try:
-#             features = {
-#                 "src_ip": pkt["src_ip"],
-#                 "dst_ip": pkt["dst_ip"],
-#                 "protocol": 1 if pkt["protocol"] == "TCP" else 0,
-#                 "length": pkt["length"],
-#                 "timestamp": pkt["timestamp"],
-#             }
-
-#             # Optional: change this to batch call if model supports it
-#             response = requests.post(MODEL_URL, json=features)
-#             model_response = response.json()
-#             # print("Anomaly Detection:", model_response)
-
-#             results.append({
-#                 "features": features,
-#                 "anomaly": model_response.get("anomaly"),
-#                 "reasons": model_response.get("reasons", [])
-#             })
-#         except Exception as e:
-#             print("Error processing packet:", e)
-
-#     return {"status": "batch processed", "results": results}
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=5002, reload=True)
