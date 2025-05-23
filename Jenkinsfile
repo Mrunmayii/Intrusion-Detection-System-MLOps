@@ -108,6 +108,7 @@ pipeline {
             steps {
                 withEnv(["KUBECONFIG=${env.KUBECONFIG}"]) {
                     dir('ansible') {
+                        sh 'ansible-galaxy collection install kubernetes.core'
                         sh '''
                         ansible-playbook ingress-setup.yml
                         '''
