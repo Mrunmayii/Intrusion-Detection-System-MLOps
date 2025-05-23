@@ -7,21 +7,16 @@ from datetime import datetime
 import time
 import threading
 from pydantic import BaseModel
-# from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI()
-# Instrumentator().instrument(app).expose(app)
+Instrumentator().instrument(app).expose(app)
 
-# PREPROCESSING_URL = "http://preprocessing-service:5002/extract"
-# PREPROCESSING_BATCH_URL = "http://preprocessing-service:5002/extract_batch"
-PREPROCESSING_URL = "http://localhost:5002/extract"
-# PREPROCESSING_BATCH_URL = "http://localhost:5002/extract_batch"
+PREPROCESSING_URL = "http://preprocessing-service:5002/extract"
+# PREPROCESSING_URL = "http://localhost:5002/extract"
 
-BATCH_SIZE = 10  # Number of packets per batch
-BATCH_TIME = 5   # Max seconds before sending a batch
-
-captured_packets = []  # store packets here for /get_packet or /malicious endpoints
-malicious_packets = [] # store detected malicious packets for display
+captured_packets = []  
+malicious_packets = [] 
 
 last_send_time = time.time()
 
@@ -34,7 +29,6 @@ class Packet(BaseModel):
 
 @app.get("/get_packet")
 def get_latest_packet():
-    # For demo: return the last captured packet or dummy
     if captured_packets:
         return captured_packets[-1]
     else:
@@ -52,6 +46,7 @@ def analyze_packet(packet: Packet):
     try:
         packet_dict = packet.dict()
         response = requests.post(PREPROCESSING_URL, json=packet_dict).json()
+        print("resp from preprocess ", response)
 
         if response.status_code == 200:
             preprocessed = response.json()
@@ -83,7 +78,7 @@ def capture_packets():
     print("in packet capture")
     global capture_thread_stop
     capture_thread_stop = False
-    capture = pyshark.LiveCapture(interface="wlo1")
+    capture = pyshark.LiveCapture(interface="any")
     batch = []
     last_sent_time = time.time()
     for packet in capture.sniff_continuously():
@@ -100,6 +95,10 @@ def capture_packets():
                     "length": int(packet.length),
                     "timestamp": datetime.now().isoformat()
                 }
+                captured_packets.append(pkt_data)
+                if len(captured_packets) > 1000:
+                    captured_packets.pop(0)
+
                 # print(pkt_data)
                 # batch.append(pkt_data)
                 try:
@@ -130,13 +129,6 @@ def stop_capture():
     global capture_thread_stop
     capture_thread_stop = True
     return {"status": "capture stopping"}
-
-
-# @app.on_event("startup")
-# def start_sniffer():
-#     thread = threading.Thread(target=capture_packets)
-#     thread.daemon = True
-#     thread.start()
 
 @app.get("/")
 def root():

@@ -1,0 +1,5 @@
+---
+- name: Apply Prometheus and Grafana manifests
+  shell: kubectl apply -f kubernetes/monitoring/
+  environment:
+    KUBECONFIG: "{{ lookup('env', 'KUBECONFIG') }}"

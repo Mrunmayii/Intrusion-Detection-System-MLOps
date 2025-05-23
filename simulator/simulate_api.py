@@ -5,10 +5,10 @@ import random
 from datetime import datetime
 import logging
 from pydantic import BaseModel
-# from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_fastapi_instrumentator import Instrumentator
 
 app = FastAPI()
-# Instrumentator().instrument(app).expose(app)
+Instrumentator().instrument(app).expose(app)
 
 PROTOCOLS = ['TCP', 'UDP', 'ICMP']
 IPS = ['192.168.1.2', '192.168.1.3', '10.0.0.2', '8.8.8.8', '172.16.0.5']
@@ -44,7 +44,7 @@ def generate_packet(include_label=True, force_label=None):
         "protocol": protocol,
         "length": length,
         "timestamp": timestamp,
-        "label": label  # For training or analysis
+        "label": label  
     }
     logger.info(f"Simulated packet: {packet}")
 

@@ -4,15 +4,14 @@ from typing import Optional
 import uvicorn
 import asyncio
 import httpx
-# from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_fastapi_instrumentator import Instrumentator
 
-# MODEL_URL = "http://ml-service:5003/detect"
-# MODEL_URL = "http://ml-service:5003/detect_batch"
-MODEL_URL = "http://localhost:5003/detect_batch"
+MODEL_URL = "http://ml-service:5003/detect_batch"
+# MODEL_URL = "http://localhost:5003/detect_batch"
 
 
 app = FastAPI()
-# Instrumentator().instrument(app).expose(app)
+Instrumentator().instrument(app).expose(app)
 
 batch = []
 BATCH_SIZE = 50
@@ -65,6 +64,9 @@ async def send_to_ml_model(packets):
             print(f"Sent batch of {len(packets)} packets, status: {response.status_code}")
             if response.status_code == 200:
                 results = response.json().get("results", [])
+                print("ML service result:", results)
+                print("Parsed anomaly type:", type(results[0]["anomaly"]))
+
                 # return results
                 combined = []
                 for pkt, res in zip(packets, results):
@@ -75,7 +77,7 @@ async def send_to_ml_model(packets):
                         "length": pkt["length"],
                         "timestamp": pkt["timestamp"],
                         "anomaly": res["anomaly"],
-                        "label": "Anomaly" if res["anomaly"] else "Normal",
+                        "label": "Anomaly" if str(res["anomaly"]).lower() == "true" else "Normal",
                         "reasons": res["reasons"]
                     })
                 store_results_for_frontend.extend(combined)  # Save for frontend

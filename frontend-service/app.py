@@ -3,24 +3,26 @@ import requests
 import time
 import threading
 import pandas as pd
-# from metrics import packet_counter, start_metrics_server
+from metrics import packet_counter, start_metrics_server
 
-# start_metrics_server()
+start_metrics_server()
 
-# BASE_URL = "http://packet-capture-service:5001/"
-# PREPROCESSING_URL = "http://preprocessing-service:5002/"
-# ML_SERVICE_URL = "http://ml-service:5003/"
-# SIMULATE_URL = "http://simulator-service:5004/"
+BASE_URL = "http://packet-capture-service:5001/"
+PREPROCESSING_URL = "http://preprocessing-service:5002/"
+ML_SERVICE_URL = "http://ml-service:5003/"
+SIMULATE_URL = "http://simulator-service:5004/"
 
-BASE_URL = "http://localhost:5001/"
-PREPROCESSING_URL = "http://localhost:5002/"
-ML_SERVICE_URL = "http://localhost:5003/detect"
-SIMULATE_URL = "http://localhost:5004/"
+# BASE_URL = "http://localhost:5001/"
+# PREPROCESSING_URL = "http://localhost:5002/"
+# ML_SERVICE_URL = "http://localhost:5003/detect"
+# SIMULATE_URL = "http://localhost:5004/"
 
 if "live_capture_running" not in st.session_state:
     st.session_state["live_capture_running"] = False
 if "live_packet_log" not in st.session_state:
     st.session_state["live_packet_log"] = []
+if "capture_stop_event" not in st.session_state:
+    st.session_state["capture_stop_event"] = threading.Event()
 
 if "sim_packets" not in st.session_state:
     st.session_state["sim_packets"] = []
@@ -44,10 +46,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-
-def highlight_anomalies(row):
-    return ['background-color: #FFCCCC' if row['anomaly'] else '' for _ in row]
-
 st.title("Real-time Intrusion Detection System")
 
 status_color = "Running" if st.session_state["live_capture_running"] else "Stopped"
@@ -65,18 +63,15 @@ if option == "Live Capture":
                 res = requests.post(f"{BASE_URL}start_capture")
                 st.success(res.json())
                 st.session_state["live_capture_running"] = True
+                st.session_state["capture_stop_event"].clear()
 
                 def capture_loop():
-                    while st.session_state["live_capture_running"]:
+                    # while not stop_event.is_set():
+                    while not st.session_state["capture_stop_event"].is_set():
                         try:
-                            res = requests.get(f"{BASE_URL}get_packet")
+                            res = requests.get(f"{BASE_URL}get_packet", timeout=3)
                             packet = res.json()
-                            detection = requests.post(f"{BASE_URL}analyze_packet", json=packet).json()
-
-                            # if detection.get("anomaly", False):
-                            #     st.error(f"Anomaly Detected: {'; '.join(detection.get('reasons',[]))}")
-                            # else:
-                            #     st.success("Packet is normal")
+                            detection = requests.post(f"{BASE_URL}analyze_packet", json=packet, timeout=3).json()
                             packet_display = {
                                 "src_ip": packet.get("src_ip", "N/A"),
                                 "dst_ip": packet.get("dst_ip", "N/A"),
@@ -87,12 +82,11 @@ if option == "Live Capture":
                                 "Reasons": "; ".join(detection.get("reasons", []))
                             }
 
-                            # Append and trim to last 20 packets
                             st.session_state["live_packet_log"].append(packet_display)
                             if len(st.session_state["live_packet_log"]) > 20:
                                 st.session_state["live_packet_log"] = st.session_state["live_packet_log"][-20:]
 
-                            time.sleep(2)
+                            time.sleep(1)
                         except Exception as e:
                             st.error(f"Error during live capture: {e}")
                             st.session_state["live_capture_running"] = False
@@ -105,11 +99,52 @@ if option == "Live Capture":
     with col2:
         if st.button("⏹️ Stop Live Capture") and st.session_state["live_capture_running"]:
             st.session_state["live_capture_running"] = False
+            st.session_state["capture_stop_event"].set()
+            # try:
+            #     res = requests.post(f"{BASE_URL}stop_capture")
+            #     st.success(res.json())
+            # except Exception as e:
+            #     st.error(f"Failed to stop capture: {e}")
             try:
+            # Download CSV
+                if st.session_state["live_packet_log"]:
+                    df = pd.DataFrame(st.session_state["live_packet_log"])
+                    csv = df.to_csv(index=False).encode('utf-8')
+                    st.download_button("📥 Download Captured Packets", csv, "captured_packets.csv", "text/csv")
+
+                # Clear packets
+                st.session_state["live_packet_log"] = []
+
+                # Stop backend capture
                 res = requests.post(f"{BASE_URL}stop_capture")
                 st.success(res.json())
             except Exception as e:
                 st.error(f"Failed to stop capture: {e}")
+
+    with st.expander("Check Detected Malicious Packets"):
+
+        if st.button("Check for Malicious Packets"):
+            try:
+                res = requests.get(f"{BASE_URL}malicious")
+                data = res.json()
+                count = data.get("count", 0)
+                packets = data.get("packets", [])
+
+                if count == 0:
+                    st.success("No malicious packets detected so far.")
+                else:
+                    st.error(f"{count} malicious packet(s) detected!")
+                    for pkt in packets:
+                        with st.container():
+                            st.markdown("---")
+                            st.markdown(f"<div class='packet-box'><b>Source IP:</b> {pkt['src_ip']}<br>"
+                                        f"<b>Destination IP:</b> {pkt['dst_ip']}<br>"
+                                        f"<b>Protocol:</b> {pkt['protocol']}<br>"
+                                        f"<b>Length:</b> {pkt['length']}<br>"
+                                        f"<b>Timestamp:</b> {pkt['timestamp']}<br>"
+                                        f"<b>Reasons:</b> {'; '.join(pkt['reasons'])}</div>", unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"Failed to fetch malicious packets: {e}")
 
     with st.expander("Recent Captured Packets (Live View)", expanded=True):
         if st.session_state["live_capture_running"]:
@@ -135,36 +170,22 @@ if option == "Live Capture":
             except Exception as e:
                 st.error(f"Error fetching packet: {e}")
 
-        if st.session_state["live_packet_log"]:
-            st.dataframe(st.session_state["live_packet_log"], use_container_width=True)
-            time.sleep(2)
-            st.experimental_rerun()
-        else:
-            st.info("No packets captured yet.")
+            if st.session_state["live_packet_log"]:
+                df = pd.DataFrame(st.session_state["live_packet_log"])
+                st.dataframe(st.session_state["live_packet_log"], use_container_width=True)
+                time.sleep(2)
+                st.rerun()
+            else:
+                st.info("No packets captured yet.")
+            # if st.session_state["live_packet_log"]:
+            # df = pd.DataFrame(st.session_state["live_packet_log"])
 
-    with st.expander("Check Detected Malicious Packets"):
-        if st.button("Check for Malicious Packets"):
-            try:
-                res = requests.get(f"{BASE_URL}malicious")
-                data = res.json()
-                count = data.get("count", 0)
-                packets = data.get("packets", [])
+            # def highlight_malicious(row):
+            #     return ['background-color: #ff9999' if row['Label'] == 'Anomaly' else '' for _ in row]
 
-                if count == 0:
-                    st.success("No malicious packets detected so far.")
-                else:
-                    st.error(f"{count} malicious packet(s) detected!")
-                    for pkt in packets:
-                        with st.container():
-                            st.markdown("---")
-                            st.markdown(f"<div class='packet-box'><b>Source IP:</b> {pkt['src_ip']}<br>"
-                                        f"<b>Destination IP:</b> {pkt['dst_ip']}<br>"
-                                        f"<b>Protocol:</b> {pkt['protocol']}<br>"
-                                        f"<b>Length:</b> {pkt['length']}<br>"
-                                        f"<b>Timestamp:</b> {pkt['timestamp']}<br>"
-                                        f"<b>Reasons:</b> {'; '.join(pkt['reasons'])}</div>", unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"Failed to fetch malicious packets: {e}")
+            # st.dataframe(df.style.apply(highlight_malicious, axis=1), use_container_width=True)
+            # time.sleep(2)
+            # st.rerun()
 
 elif option == "Simulate Packets":
     st.subheader("Simulate & Analyze Packets")

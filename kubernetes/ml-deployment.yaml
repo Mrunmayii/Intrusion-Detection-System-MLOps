@@ -15,5 +15,6 @@ spec:
       containers:
       - name: ml-service
         image: mrunmayi12/ml-service:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 5003

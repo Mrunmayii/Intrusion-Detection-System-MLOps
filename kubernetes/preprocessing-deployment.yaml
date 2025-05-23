@@ -15,5 +15,6 @@ spec:
       containers:
       - name: preprocessing-service
         image: mrunmayi12/preprocessing-service:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 5002

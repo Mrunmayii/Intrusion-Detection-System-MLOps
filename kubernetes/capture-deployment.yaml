@@ -1,9 +1,11 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
-  name: packet-capture-deployment
+  name: packet-capture-daemonset
+  labels:
+    app: packet-capture-service
 spec:
-  replicas: 1
+  # replicas: 1
   selector:
     matchLabels:
       app: packet-capture-service
@@ -12,11 +14,17 @@ spec:
       labels:
         app: packet-capture-service
     spec:
+      hostNetwork: true
+      hostPID: true
       containers:
       - name: packet-capture-service
         image: mrunmayi12/capture-service:latest
+        imagePullPolicy: Always
         securityContext:
+          privileged: true
           capabilities:
             add: ["NET_ADMIN"]
+            add: ["NET_RAW"]
         ports:
         - containerPort: 5001
+          protocol: TCP

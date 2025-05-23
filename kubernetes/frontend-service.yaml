@@ -5,14 +5,20 @@ metadata:
   namespace: default
   annotations:
     prometheus.io/scrape: "true"
-    prometheus.io/port: "5000"
+    prometheus.io/port: "8000"
     prometheus.io/path: "/metrics"
 spec:
   type: NodePort
   selector:
     app: frontend-service
   ports:
-    - protocol: TCP
+    - name: frontend
+      protocol: TCP
       port: 5000
       targetPort: 5000
       nodePort: 30000  
+    - name: metrics
+      protocol: TCP
+      port: 8000
+      targetPort: 8000
+      nodePort: 31000

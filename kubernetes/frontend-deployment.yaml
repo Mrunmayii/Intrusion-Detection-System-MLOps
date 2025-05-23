@@ -15,5 +15,6 @@ spec:
       containers:
         - name: frontend
           image: mrunmayi12/frontend-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000

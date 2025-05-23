@@ -1,0 +1,6 @@
+---
+- name: Deploy Prometheus and Grafana
+  hosts: localhost
+  become: yes
+  roles:
+    - monitoring

@@ -22,6 +22,23 @@ pipeline {
             }
         }
 
+        stage('Ansible Provisioning') {
+            steps {
+                withCredentials([string(credentialsId: 'ansible-vault-pass', variable: 'VAULT_PASS')]) {
+                    dir('ansible') {
+                        sh '''
+                        echo "$VAULT_PASS" > vault-pass.txt
+                        ansible-playbook setup-infra.yml
+                        ansible-playbook k8s-setup.yml
+                        ansible-playbook monitoring-setup.yml --vault-password-file vault-pass.txt
+                        rm vault-pass.txt
+                        '''
+                    }
+                }
+            }
+        }
+
+
         stage('Build Docker Images') {
             steps {
                 script {
@@ -87,6 +104,24 @@ pipeline {
             }
         }
 
+        stage('Print Access URLs') {
+            steps {
+                withEnv(["KUBECONFIG=${env.KUBECONFIG}"]) {
+                    script {
+                        sh '''
+                        echo "Access Info:"
+                        echo "========================="
+                        echo "Frontend: $(minikube service frontend-service --url)"
+                        echo "Prometheus: $(minikube service prometheus-service --url)"
+                        echo "Grafana: $(minikube service grafana-service --url)"
+                        echo "========================="
+                        '''
+                    }
+                }
+            }
+        }
+
+
         // stage('Deploy ELK Stack') {
         //     steps {
         //         withEnv(["KUBECONFIG=${env.KUBECONFIG}"]) {
@@ -99,17 +134,17 @@ pipeline {
         //     }
         // }
 
-        stage('Deploy Prometheus and Grafana') {
-            steps {
-                withEnv(["KUBECONFIG=${env.KUBECONFIG}"]) {
-                    script {
-                        sh '''
-                        kubectl apply -f kubernetes/monitoring/
-                        '''
-                    }
-                }
-            }
-        }
+        // stage('Deploy Prometheus and Grafana') {
+        //     steps {
+        //         withEnv(["KUBECONFIG=${env.KUBECONFIG}"]) {
+        //             script {
+        //                 sh '''
+        //                 kubectl apply -f kubernetes/monitoring/
+        //                 '''
+        //             }
+        //         }
+        //     }
+        // }
 
     }
 

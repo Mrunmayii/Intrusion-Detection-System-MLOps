@@ -9,7 +9,6 @@ from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 app = FastAPI()
 model = joblib.load("model_isolation_forest.joblib")
 
-# prometheus metrics
 DETECT_REQUESTS = Counter("ml_detect_requests_total", "Total detect requests")
 DETECT_BATCH_REQUESTS = Counter("ml_detect_batch_requests_total", "Total detect_batch requests")
 ANOMALIES_DETECTED = Counter("ml_anomalies_detected_total", "Total anomalies detected")
