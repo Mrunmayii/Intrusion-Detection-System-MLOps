@@ -1,0 +1,5 @@
+- name: Ingress Setup
+  hosts: localhost
+  gather_facts: no
+  roles:
+    - ingress

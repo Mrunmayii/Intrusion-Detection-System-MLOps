@@ -104,6 +104,19 @@ pipeline {
             }
         }
 
+        stage('Ingress Setup') {
+            steps {
+                withEnv(["KUBECONFIG=${env.KUBECONFIG}"]) {
+                    dir('ansible') {
+                        sh '''
+                        ansible-playbook ingress-setup.yml
+                        '''
+                    }
+                }
+            }
+        }
+
+
         stage('Print Access URLs') {
             steps {
                 withEnv(["KUBECONFIG=${env.KUBECONFIG}"]) {

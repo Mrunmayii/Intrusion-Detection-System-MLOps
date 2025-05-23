@@ -1,0 +1,17 @@
+- name: Apply frontend ingress
+  kubernetes.core.k8s:
+    state: present
+    namespace: default
+    src: "{{ playbook_dir }}/../kubernetes/ingress/frontend-ingress.yaml"
+
+- name: Apply grafana ingress
+  kubernetes.core.k8s:
+    state: present
+    namespace: default
+    src: "{{ playbook_dir }}/../kubernetes/ingress/grafana-ingress.yaml"
+
+- name: Apply prometheus ingress
+  kubernetes.core.k8s:
+    state: present
+    namespace: default
+    src: "{{ playbook_dir }}/../kubernetes/ingress/prometheus-ingress.yaml"
