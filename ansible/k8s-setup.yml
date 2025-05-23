@@ -1,6 +1,6 @@
 ---
 - name: Setup Kubernetes (Minikube & kubectl)
-  hosts: localhost
+  hosts: local
   become: yes
   roles:
-    - kubernetes
+    - k8s

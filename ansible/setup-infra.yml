@@ -1,6 +1,6 @@
 ---
 - name: Setup Docker
-  hosts: localhost
+  hosts: local
   become: yes
   roles:
     - docker
